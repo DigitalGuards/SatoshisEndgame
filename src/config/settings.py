@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # Rate limiting
     blockcypher_rate_limit: float = Field(3.0, description="Requests per second for BlockCypher")
     blockchair_rate_limit: float = Field(5.0, description="Requests per second for Blockchair")
+    api_request_delay: float = Field(0.0, description="Delay between API requests in seconds")
     
     # Logging
     log_level: str = Field("INFO", description="Logging level")

@@ -12,12 +12,9 @@ if [ ! -d "venv" ]; then
     python3 -m venv venv
 fi
 
-# Activate virtual environment
-source venv/bin/activate
-
-# Install dependencies
+# Install dependencies using the venv's pip directly
 echo "Installing dependencies..."
-pip install -r requirements.txt
+./venv/bin/pip install -r requirements.txt
 
 # Create .env file if it doesn't exist
 if [ ! -f ".env" ]; then

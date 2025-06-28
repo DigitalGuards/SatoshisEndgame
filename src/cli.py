@@ -119,9 +119,12 @@ def status():
                     select(func.sum(Wallet.current_balance)).where(Wallet.is_active == True)
                 ) or 0
                 
+                # Get alerts from last 24 hours using datetime
+                from datetime import datetime, timedelta, timezone
+                
                 recent_alerts = await session.scalar(
                     select(func.count()).select_from(Alert).where(
-                        Alert.created_at >= func.now() - func.cast('24 hours', func.INTERVAL)
+                        Alert.created_at >= datetime.now(timezone.utc) - timedelta(hours=24)
                     )
                 )
                 

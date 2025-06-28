@@ -55,7 +55,8 @@ class Database:
             
             # Test connection
             async with self.engine.begin() as conn:
-                await conn.run_sync(lambda conn: conn.execute("SELECT 1"))
+                from sqlalchemy import text
+                await conn.execute(text("SELECT 1"))
             
             self.logger.info("Database initialized successfully")
             

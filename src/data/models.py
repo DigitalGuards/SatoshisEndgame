@@ -35,7 +35,7 @@ class Wallet(Base):
     
     # Metadata
     public_key = Column(String(130))  # Hex encoded public key if known
-    metadata = Column(JSON, default=dict)
+    extra_data = Column(JSON, default=dict)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -57,7 +57,7 @@ class Transaction(Base):
     """Monitored transactions"""
     __tablename__ = 'transactions'
     
-    id = Column(BigInteger, primary_key=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     txhash = Column(String(64), nullable=False, index=True)
     block_time = Column(DateTime(timezone=True), nullable=False, index=True)
     block_height = Column(Integer)
@@ -76,7 +76,7 @@ class Transaction(Base):
     anomaly_reason = Column(String(100))
     
     # Metadata
-    metadata = Column(JSON, default=dict)
+    extra_data = Column(JSON, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -167,7 +167,7 @@ class SystemMetric(Base):
     
     # Context
     component = Column(String(50))  # api, database, monitoring, etc.
-    metadata = Column(JSON, default=dict)
+    extra_data = Column(JSON, default=dict)
     
     # Timestamp
     recorded_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
