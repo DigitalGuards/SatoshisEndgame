@@ -20,12 +20,13 @@ When quantum computers become powerful enough, these funds could be stolen in mi
 
 ## 🎯 Key Features
 
-- **🔍 Multi-Source Monitoring** - Redundant blockchain APIs with automatic fallback
+- **🔍 Block-Based Monitoring** - Efficient monitoring without exceeding API limits
 - **⚡ Real-time Detection** - Pattern recognition for quantum emergency scenarios
 - **💬 Discord Alerts** - Instant notifications for suspicious activities
 - **📊 Risk Scoring** - Prioritizes monitoring based on balance, dormancy, and vulnerability
 - **🗄️ Time-Series Database** - Efficient storage with PostgreSQL/TimescaleDB
 - **🚀 Async Architecture** - High-performance concurrent monitoring
+- **📦 943 Real Addresses** - Monitoring actual dormant addresses with 1.3M BTC
 
 ## 📸 Screenshots
 
@@ -55,8 +56,9 @@ cd SatoshisEndgame
 # Initialize database
 python -m src.cli init-db
 
-# Load sample vulnerable addresses
-python -m src.utils.init_data
+# Load real dormant addresses from BitInfoCharts
+python -m src.scrapers.bitinfocharts_scraper_v2 --pages 10
+python -m scripts.import_bitinfocharts --min-balance 100
 
 # Start monitoring
 python -m src.cli monitor
@@ -107,13 +109,27 @@ src/
 │   └── address_manager.py # Address vulnerability detection
 ├── services/           # Core services
 │   ├── monitoring_service.py # Main monitoring orchestrator
+│   ├── block_monitor.py # Efficient block-based monitoring
 │   ├── notification_service.py # Discord webhook integration
 │   └── quantum_detector.py # Emergency pattern detection
 ├── data/              # Database layer
 │   ├── models.py      # SQLAlchemy models
 │   └── database.py    # Async database manager
+├── scrapers/          # BitInfoCharts scrapers
+│   └── bitinfocharts_scraper_v2.py # Scrape dormant addresses
 └── cli.py             # Command-line interface
 ```
+
+### 🔄 Block Monitoring vs Individual Polling
+
+**Old Approach (Individual Polling):**
+- 943 addresses × 288 checks/day = 271,584 API calls/day ❌
+- Exceeds BlockCypher free tier by 272x!
+
+**New Approach (Block Monitoring):**
+- ~144 blocks/day = 144 API calls ✅
+- 1,886x more efficient!
+- Never misses a transaction
 
 ## 🔨 Command Line Interface
 

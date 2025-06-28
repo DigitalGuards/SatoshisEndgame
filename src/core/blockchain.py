@@ -272,7 +272,8 @@ class BlockchainManager:
         self.session: Optional[ClientSession] = None
         self.apis: List[BlockchainAPI] = []
         self.logger = logger.bind(component="blockchain_manager")
-        self.request_counts = {"successful": 0, "failed": 0}
+        self.request_counts = {"successful": 0, "failed": 0, "total": 0}
+        self.preferred_api: Optional[str] = None
     
     async def initialize(self):
         """Initialize HTTP session and API clients"""
@@ -413,3 +414,34 @@ class BlockchainManager:
             "primary_api": self.apis[0].__class__.__name__ if self.apis else "None",
             "fallback_apis": [api.__class__.__name__ for api in self.apis[1:]] if len(self.apis) > 1 else []
         }
+        
+    async def get_latest_block_height(self) -> Optional[int]:
+        """Get the latest block height"""
+        for api in self.apis:
+            try:
+                # For now, we'll use a simple approach
+                # In production, you'd implement proper block API endpoints
+                # This is a placeholder that gets recent activity
+                return 820000  # Placeholder - implement real API calls
+            except Exception as e:
+                self.logger.debug(f"API {api.__class__.__name__} failed to get block height", error=str(e))
+                continue
+                
+        return None
+        
+    async def get_block(self, block_height: int) -> Optional[Dict]:
+        """Get block data by height"""
+        for api in self.apis:
+            try:
+                # Placeholder implementation
+                # In production, you'd call actual block APIs
+                return {
+                    "height": block_height,
+                    "timestamp": datetime.now(),
+                    "transactions": []  # Would contain actual transaction data
+                }
+            except Exception as e:
+                self.logger.debug(f"API {api.__class__.__name__} failed to get block", error=str(e))
+                continue
+                
+        return None

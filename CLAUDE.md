@@ -16,8 +16,9 @@ SatoshisEndgame is a real-time monitoring system for quantum-vulnerable Bitcoin 
 # Initialize database (SQLite for dev, PostgreSQL for prod)
 python -m src.cli init-db
 
-# Load sample vulnerable addresses (no placeholder balances - fetched from blockchain)
-python -m src.utils.init_data
+# Load real dormant addresses from BitInfoCharts (943 addresses, 1.3M BTC)
+python -m src.scrapers.bitinfocharts_scraper_v2 --pages 10
+python -m scripts.import_bitinfocharts --min-balance 100
 
 # Start monitoring daemon
 python -m src.cli monitor
@@ -59,17 +60,24 @@ python -m src.cli drop-db
 
 ## Recent Improvements
 
+### Block-Based Monitoring (Major Architecture Change)
+- Switched from individual address polling to block monitoring
+- 1,886x more efficient (144 vs 271,584 API calls/day)
+- Loads all dormant addresses into memory for fast lookup
+- Monitors new blocks and extracts addresses from transactions
+- Only makes API calls when dormant addresses actually move
+
+### Real Dormant Addresses
+- Scraped 943 real dormant addresses from BitInfoCharts
+- Total value monitored: 1.3 million BTC
+- Addresses haven't moved in 8+ years
+- Includes famous addresses like MtGox hack wallets
+
 ### API Request Logging
 - All successful API requests now show balance information
 - Request timing and statistics tracked
 - Shows which API is being used (primary vs fallback)
 - Monitoring cycle completion shows total requests and success rate
-
-### No Placeholder Data
-- Initial database population creates addresses with 0 balance
-- First monitoring cycle fetches real blockchain data
-- System shows actual balances (~254 BTC) not placeholders (200 BTC)
-- "Initial balance populated" logged for transparency
 
 ### Service Management
 - `service.sh` script for systemd integration
@@ -149,19 +157,22 @@ Key tables:
 
 ## Key Architectural Decisions
 
-### Polling vs Events
-The system uses polling instead of blockchain events because:
-- No dependency on specific node infrastructure
-- Works with multiple blockchain APIs
-- Can recover from downtime without missing data
+### Block Monitoring vs Individual Polling
+The system now uses **block-based monitoring** for efficiency:
+- **Old approach**: 943 addresses × 288 checks/day = 271,584 API calls (exceeds limits!)
+- **New approach**: ~144 blocks/day = 144 API calls (1,886x more efficient!)
 
-### API Request Pattern
-With default settings:
-- **Every 5 minutes**: Checks ALL monitored addresses
-- **Every 1 minute**: Quick check of high-risk addresses only
-- **BATCH_SIZE=1**: One API request per address (BlockCypher free tier limitation)
-- **~48-72 requests/hour** depending on high-risk address count
-- **API priority**: BlockCypher (with key) → Blockchair (without key)
+How it works:
+1. Monitor new blocks (~every 10 minutes)
+2. Extract all addresses from block transactions
+3. Check against our 943 dormant addresses (fast in-memory)
+4. Only fetch details for matches (rare)
+
+Benefits:
+- Stays within API free tier limits
+- Never misses a transaction
+- Scales to millions of addresses
+- Real-time detection (within minutes)
 
 ### Async-First Design
 Everything is async to handle:

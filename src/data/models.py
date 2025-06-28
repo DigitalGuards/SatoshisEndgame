@@ -28,6 +28,7 @@ class Wallet(Base):
     last_activity = Column(DateTime(timezone=True))
     first_seen = Column(DateTime(timezone=True))
     transaction_count = Column(Integer, default=0)
+    has_moved = Column(Boolean, default=False)  # Track if address has moved funds
     
     # Risk assessment
     risk_score = Column(Float, default=0.0)
