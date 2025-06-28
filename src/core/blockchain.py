@@ -272,6 +272,7 @@ class BlockchainManager:
         self.session: Optional[ClientSession] = None
         self.apis: List[BlockchainAPI] = []
         self.logger = logger.bind(component="blockchain_manager")
+        self.request_counts = {"successful": 0, "failed": 0}
     
     async def initialize(self):
         """Initialize HTTP session and API clients"""
@@ -321,10 +322,18 @@ class BlockchainManager:
         for i, api in enumerate(self.apis):
             api_name = api.__class__.__name__
             try:
-                self.logger.debug(f"Attempting to fetch address info using {api_name}")
+                self.logger.info(f"Fetching address info using {api_name}", address=address[:10] + "...")
                 result = await api.get_address_info(address)
                 if i > 0:
                     self.logger.info(f"Successfully fetched using fallback API: {api_name}")
+                else:
+                    self.logger.info(
+                        f"✓ API Success",
+                        api=api_name,
+                        address=address[:10] + "...",
+                        balance_btc=round(result.balance / 100_000_000, 8)
+                    )
+                self.request_counts["successful"] += 1
                 return result
             except BlockchainAPIError as e:
                 self.logger.warning(
@@ -336,17 +345,31 @@ class BlockchainManager:
                 continue
         
         self.logger.error("All APIs failed for address", address=address[:10] + "...")
+        self.request_counts["failed"] += 1
         return None
     
     async def get_addresses_batch(self, addresses: List[str]) -> List[AddressInfo]:
         """Get batch address info with automatic fallback"""
+        import time
         for i, api in enumerate(self.apis):
             api_name = api.__class__.__name__
             try:
-                self.logger.debug(f"Attempting batch fetch using {api_name}", batch_size=len(addresses))
+                start_time = time.time()
+                self.logger.info(f"Fetching batch using {api_name}", batch_size=len(addresses))
                 result = await api.get_addresses_batch(addresses)
+                elapsed = time.time() - start_time
                 if i > 0:
-                    self.logger.info(f"Successfully fetched batch using fallback API: {api_name}", count=len(result))
+                    self.logger.info(f"Successfully fetched batch using fallback API: {api_name}", count=len(result), elapsed_seconds=round(elapsed, 2))
+                else:
+                    self.logger.info(
+                        f"Successfully fetched batch",
+                        api=api_name,
+                        batch_size=len(addresses),
+                        results=len(result),
+                        total_btc=sum(r.balance for r in result) / 100_000_000,
+                        elapsed_seconds=round(elapsed, 2)
+                    )
+                self.request_counts["successful"] += len(addresses)
                 return result
             except BlockchainAPIError as e:
                 self.logger.warning(
@@ -358,6 +381,7 @@ class BlockchainManager:
                 continue
         
         self.logger.error("All APIs failed for batch", batch_size=len(addresses))
+        self.request_counts["failed"] += len(addresses)
         return []
     
     async def get_recent_transactions(self, address: str, limit: int = 10) -> List[Transaction]:
@@ -375,3 +399,17 @@ class BlockchainManager:
         
         self.logger.error("All APIs failed for transactions", address=address)
         return []
+    
+    def get_request_stats(self) -> Dict[str, Any]:
+        """Get API request statistics"""
+        total = self.request_counts["successful"] + self.request_counts["failed"]
+        success_rate = (self.request_counts["successful"] / total * 100) if total > 0 else 0
+        
+        return {
+            "total_requests": total,
+            "successful": self.request_counts["successful"],
+            "failed": self.request_counts["failed"],
+            "success_rate": round(success_rate, 2),
+            "primary_api": self.apis[0].__class__.__name__ if self.apis else "None",
+            "fallback_apis": [api.__class__.__name__ for api in self.apis[1:]] if len(self.apis) > 1 else []
+        }

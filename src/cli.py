@@ -18,6 +18,13 @@ from src.services.monitoring_service import MonitoringService
 from src.services.notification_service import DiscordNotificationService
 
 # Configure structured logging
+import logging
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper()),
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,

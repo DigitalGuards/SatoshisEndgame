@@ -78,13 +78,9 @@ async def initialize_sample_data():
                 vulnerability_type=addr_info['vulnerability_type'],
                 is_vulnerable=True,
                 is_active=True,
-                current_balance=5000000000,  # 50 BTC placeholder
-                risk_score=detector.calculate_risk_score(
-                    5000000000,
-                    3650,  # 10 years dormant
-                    addr_info['vulnerability_type']
-                ),
-                dormancy_days=3650,
+                current_balance=0,  # Will be populated by first monitoring cycle
+                risk_score=0.0,  # Will be calculated after real balance is fetched
+                dormancy_days=0,  # Will be calculated from actual blockchain data
                 metadata={'notes': addr_info['notes']}
             )
             

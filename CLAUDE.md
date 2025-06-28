@@ -16,7 +16,7 @@ SatoshisEndgame is a real-time monitoring system for quantum-vulnerable Bitcoin 
 # Initialize database (SQLite for dev, PostgreSQL for prod)
 python -m src.cli init-db
 
-# Load sample vulnerable addresses
+# Load sample vulnerable addresses (no placeholder balances - fetched from blockchain)
 python -m src.utils.init_data
 
 # Start monitoring daemon
@@ -24,6 +24,9 @@ python -m src.cli monitor
 
 # Test Discord webhook
 ./test_webhook.sh
+
+# Full restart with fresh database
+./restart.sh
 ```
 
 ### Code Quality
@@ -53,6 +56,25 @@ python -m src.cli check-address <address>
 # Drop database (careful!)
 python -m src.cli drop-db
 ```
+
+## Recent Improvements
+
+### API Request Logging
+- All successful API requests now show balance information
+- Request timing and statistics tracked
+- Shows which API is being used (primary vs fallback)
+- Monitoring cycle completion shows total requests and success rate
+
+### No Placeholder Data
+- Initial database population creates addresses with 0 balance
+- First monitoring cycle fetches real blockchain data
+- System shows actual balances (~254 BTC) not placeholders (200 BTC)
+- "Initial balance populated" logged for transparency
+
+### Service Management
+- `service.sh` script for systemd integration
+- `restart.sh` for quick database reset and restart
+- Portable service files with no hardcoded paths
 
 ## High-Level Architecture
 
@@ -132,6 +154,14 @@ The system uses polling instead of blockchain events because:
 - No dependency on specific node infrastructure
 - Works with multiple blockchain APIs
 - Can recover from downtime without missing data
+
+### API Request Pattern
+With default settings:
+- **Every 5 minutes**: Checks ALL monitored addresses
+- **Every 1 minute**: Quick check of high-risk addresses only
+- **BATCH_SIZE=1**: One API request per address (BlockCypher free tier limitation)
+- **~48-72 requests/hour** depending on high-risk address count
+- **API priority**: BlockCypher (with key) → Blockchair (without key)
 
 ### Async-First Design
 Everything is async to handle:

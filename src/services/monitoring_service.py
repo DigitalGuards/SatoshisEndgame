@@ -71,13 +71,14 @@ class MonitoringService:
                 select(Wallet).where(
                     and_(
                         Wallet.is_vulnerable == True,
-                        Wallet.is_active == True,
-                        Wallet.current_balance >= self.vulnerability_detector.min_balance_satoshis
+                        Wallet.is_active == True
                     )
                 )
             )
             wallets = result.scalars().all()
             
+            # Note: We load all vulnerable addresses, even with 0 balance initially
+            # The first monitoring cycle will populate their real balances
             self.monitored_addresses = {wallet.address for wallet in wallets}
             self.total_balance_satoshis = sum(wallet.current_balance for wallet in wallets)
             self.logger.info(f"Loaded {len(self.monitored_addresses)} addresses for monitoring")
@@ -130,7 +131,8 @@ class MonitoringService:
         self.scheduler.start()
         self.logger.info("Monitoring service started")
         
-        # Run initial check
+        # Run initial check immediately
+        self.logger.info("Running initial address check...")
         await self.monitor_all_addresses()
     
     async def stop(self):
@@ -147,7 +149,9 @@ class MonitoringService:
     async def monitor_all_addresses(self):
         """Main monitoring task - check all addresses"""
         start_time = datetime.utcnow()
-        self.logger.info("Starting address monitoring cycle")
+        self.logger.info("Starting address monitoring cycle", 
+                        total_addresses=len(self.monitored_addresses),
+                        batch_size=settings.batch_size)
         
         try:
             # Process addresses in batches
@@ -156,6 +160,8 @@ class MonitoringService:
             
             for i in range(0, len(addresses), settings.batch_size):
                 batch = addresses[i:i + settings.batch_size]
+                self.logger.info(f"Processing batch {i//settings.batch_size + 1}/{len(addresses)}", 
+                               batch_addresses=len(batch))
                 
                 # Get current state from blockchain
                 address_infos = await self.blockchain_manager.get_addresses_batch(batch)
@@ -176,11 +182,15 @@ class MonitoringService:
                         await self._handle_emergency_pattern(pattern)
             
             elapsed = (datetime.utcnow() - start_time).total_seconds()
+            api_stats = self.blockchain_manager.get_request_stats()
             self.logger.info(
                 "Address monitoring cycle completed",
                 duration_seconds=elapsed,
                 addresses_checked=len(addresses),
-                activities_detected=len(recent_activities)
+                activities_detected=len(recent_activities),
+                api_requests=api_stats["total_requests"],
+                api_success_rate=f"{api_stats['success_rate']}%",
+                primary_api=api_stats["primary_api"]
             )
             
         except Exception as e:
@@ -201,27 +211,54 @@ class MonitoringService:
             
             # Check for balance changes
             if wallet.current_balance != address_info.balance:
-                # Significant change detected
+                # Balance change detected
                 change_amount = address_info.balance - wallet.current_balance
                 
-                # Create transaction record
-                transaction = Transaction(
-                    wallet_id=wallet.id,
-                    wallet_address=wallet.address,
-                    txhash="pending",  # Will be updated with actual txhash
-                    block_time=datetime.utcnow(),
-                    amount=abs(change_amount),
-                    tx_type="out" if change_amount < 0 else "in",
-                    is_anomalous=self._is_anomalous_transaction(wallet, change_amount),
-                    extra_data={}
-                )
-                session.add(transaction)
+                # Log initial population or actual change
+                if wallet.current_balance == 0:
+                    self.logger.info(
+                        "Initial balance populated",
+                        address=wallet.address[:10] + "...",
+                        balance_btc=round(address_info.balance / 100_000_000, 8)
+                    )
+                else:
+                    self.logger.warning(
+                        "Balance change detected!",
+                        address=wallet.address[:10] + "...",
+                        old_balance_btc=round(wallet.current_balance / 100_000_000, 8),
+                        new_balance_btc=round(address_info.balance / 100_000_000, 8),
+                        change_btc=round(change_amount / 100_000_000, 8)
+                    )
+                
+                # Create transaction record (skip for initial population)
+                if wallet.current_balance != 0:
+                    transaction = Transaction(
+                        wallet_id=wallet.id,
+                        wallet_address=wallet.address,
+                        txhash="pending",  # Will be updated with actual txhash
+                        block_time=datetime.utcnow(),
+                        amount=abs(change_amount),
+                        tx_type="out" if change_amount < 0 else "in",
+                        is_anomalous=self._is_anomalous_transaction(wallet, change_amount),
+                        extra_data={}
+                    )
+                    session.add(transaction)
                 
                 # Update wallet
                 old_balance = wallet.current_balance
                 wallet.current_balance = address_info.balance
-                wallet.last_activity = datetime.utcnow()
+                wallet.last_activity = address_info.last_activity or datetime.utcnow()
                 wallet.transaction_count = address_info.transaction_count
+                
+                # Calculate/update risk score
+                if wallet.current_balance > 0:
+                    dormancy_days = (datetime.utcnow() - wallet.last_activity).days if wallet.last_activity else 0
+                    wallet.dormancy_days = dormancy_days
+                    wallet.risk_score = self.vulnerability_detector.calculate_risk_score(
+                        wallet.current_balance,
+                        dormancy_days,
+                        wallet.vulnerability_type
+                    )
                 
                 # Calculate dormancy
                 if wallet.last_activity:
