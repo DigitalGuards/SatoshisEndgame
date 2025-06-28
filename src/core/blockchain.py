@@ -97,9 +97,7 @@ class BlockchairAPI(BlockchainAPI):
     async def _make_request(self, endpoint: str, params: Optional[Dict] = None) -> Dict:
         await self.rate_limiter.acquire()
         
-        # Add configured delay before making request
-        if settings.api_request_delay > 0:
-            await asyncio.sleep(settings.api_request_delay)
+        # Rate limiting is handled by the rate limiter above
         
         if params is None:
             params = {}
@@ -198,9 +196,7 @@ class BlockCypherAPI(BlockchainAPI):
     async def _make_request(self, endpoint: str, params: Optional[Dict] = None) -> Dict:
         await self.rate_limiter.acquire()
         
-        # Add configured delay before making request
-        if settings.api_request_delay > 0:
-            await asyncio.sleep(settings.api_request_delay)
+        # Rate limiting is handled by the rate limiter above
         
         if params is None:
             params = {}

@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     discord_webhook_url: str = Field(..., description="Discord webhook URL for alerts")
     
     # Monitoring parameters
-    batch_size: int = Field(50, description="Number of addresses to check per batch")
+    # Note: batch_size is kept for backward compatibility but should be removed
+    # when fully migrated to block-based monitoring
+    batch_size: int = Field(1, description="Number of addresses per batch (legacy)")
     dormancy_threshold_days: int = Field(365, description="Days of inactivity to consider dormant")
     min_balance_threshold_btc: float = Field(10.0, description="Minimum BTC balance to monitor")
     alert_cooldown_minutes: int = Field(30, description="Minutes between duplicate alerts")
@@ -32,18 +34,15 @@ class Settings(BaseSettings):
     # Rate limiting
     blockcypher_rate_limit: float = Field(3.0, description="Requests per second for BlockCypher")
     blockchair_rate_limit: float = Field(5.0, description="Requests per second for Blockchair")
-    api_request_delay: float = Field(0.0, description="Delay between API requests in seconds")
     
     # Logging
     log_level: str = Field("INFO", description="Logging level")
     log_format: str = Field("json", description="Log format (json or plain)")
     
-    # Monitoring strategy for API limits
-    monitoring_strategy: str = Field("tiered_risk_based", description="Monitoring strategy")
-    max_monitored_addresses: int = Field(850, description="Maximum addresses to monitor")
-    critical_tier_size: int = Field(50, description="Critical tier size (95+ risk score)")
-    high_tier_size: int = Field(200, description="High tier size (80-94 risk score)")
-    medium_tier_size: int = Field(600, description="Medium tier size (60-79 risk score)")
+    # Block monitoring settings
+    # Note: With block-based monitoring, we no longer need individual address
+    # monitoring strategies or tier sizes. The system monitors all addresses
+    # efficiently by checking new blocks (~144/day instead of 271,584 API calls)
     
     @validator("min_balance_threshold_btc")
     def validate_balance_threshold(cls, v):
