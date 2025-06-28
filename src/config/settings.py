@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     log_level: str = Field("INFO", description="Logging level")
     log_format: str = Field("json", description="Log format (json or plain)")
     
+    # Monitoring strategy for API limits
+    monitoring_strategy: str = Field("tiered_risk_based", description="Monitoring strategy")
+    max_monitored_addresses: int = Field(850, description="Maximum addresses to monitor")
+    critical_tier_size: int = Field(50, description="Critical tier size (95+ risk score)")
+    high_tier_size: int = Field(200, description="High tier size (80-94 risk score)")
+    medium_tier_size: int = Field(600, description="Medium tier size (60-79 risk score)")
+    
     @validator("min_balance_threshold_btc")
     def validate_balance_threshold(cls, v):
         if v < 0:

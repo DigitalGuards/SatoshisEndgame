@@ -14,6 +14,10 @@ requests==2.32.3
 websockets==13.1
 discord-webhook==1.3.1
 
+# Web scraping
+beautifulsoup4==4.12.3
+lxml==5.2.2
+
 # Database
 psycopg2-binary==2.9.10
 alembic==1.14.0
