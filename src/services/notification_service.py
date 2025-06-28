@@ -226,7 +226,7 @@ class DiscordNotificationService:
             )
             return False
     
-    async def send_startup_notification(self):
+    async def send_startup_notification(self, monitored_count: int = 0, total_btc: float = 0.0):
         """Send a notification when the system starts"""
         alert = NotificationAlert(
             alert_type="system_startup",
@@ -234,10 +234,10 @@ class DiscordNotificationService:
             title="System Started",
             description="SatoshisEndgame monitoring system has been initialized and is now actively monitoring quantum-vulnerable Bitcoin addresses.",
             wallet_addresses=[],
-            total_value=0,
+            total_value=int(total_btc * 100_000_000),  # Convert to satoshis
             metadata={
                 "version": "1.0.0",
-                "monitored_addresses": "Loading...",
+                "monitored_addresses": str(monitored_count),
                 "start_time": datetime.utcnow().isoformat()
             }
         )

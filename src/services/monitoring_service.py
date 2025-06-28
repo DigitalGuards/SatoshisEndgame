@@ -32,6 +32,7 @@ class MonitoringService:
         
         # Tracking state
         self.monitored_addresses: Set[str] = set()
+        self.total_balance_satoshis: int = 0
         self.last_check_time: Dict[str, datetime] = {}
         self.is_running = False
     
@@ -48,8 +49,12 @@ class MonitoringService:
         # Load monitored addresses from database
         await self._load_monitored_addresses()
         
-        # Send startup notification
-        await self.discord_service.send_startup_notification()
+        # Send startup notification with actual data
+        total_btc = self.total_balance_satoshis / 100_000_000
+        await self.discord_service.send_startup_notification(
+            monitored_count=len(self.monitored_addresses),
+            total_btc=total_btc
+        )
         
         # Schedule monitoring tasks
         self._schedule_tasks()
@@ -74,6 +79,7 @@ class MonitoringService:
             wallets = result.scalars().all()
             
             self.monitored_addresses = {wallet.address for wallet in wallets}
+            self.total_balance_satoshis = sum(wallet.current_balance for wallet in wallets)
             self.logger.info(f"Loaded {len(self.monitored_addresses)} addresses for monitoring")
     
     def _schedule_tasks(self):
