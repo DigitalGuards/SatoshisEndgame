@@ -280,13 +280,36 @@ class BlockchainManager:
             headers={'User-Agent': 'SatoshisEndgame/1.0'}
         )
         
-        # Initialize APIs in priority order
-        self.apis = [
-            BlockchairAPI(self.session),
-            BlockCypherAPI(self.session)
-        ]
+        # Initialize APIs - prioritize ones with API keys
+        blockchair = BlockchairAPI(self.session)
+        blockcypher = BlockCypherAPI(self.session)
         
-        self.logger.info("Blockchain manager initialized", api_count=len(self.apis))
+        # Order APIs based on whether they have keys
+        if settings.blockcypher_api_key and not settings.blockchair_api_key:
+            # BlockCypher has key, Blockchair doesn't - use BlockCypher first
+            self.apis = [blockcypher, blockchair]
+        elif settings.blockchair_api_key and not settings.blockcypher_api_key:
+            # Blockchair has key, BlockCypher doesn't - use Blockchair first
+            self.apis = [blockchair, blockcypher]
+        else:
+            # Both have keys or neither has keys - default order
+            self.apis = [blockchair, blockcypher]
+        
+        api_status = []
+        for api in self.apis:
+            api_name = api.__class__.__name__
+            has_key = False
+            if isinstance(api, BlockchairAPI):
+                has_key = bool(api.api_key)
+            elif isinstance(api, BlockCypherAPI):
+                has_key = bool(api.api_key)
+            api_status.append(f"{api_name}({'with key' if has_key else 'no key'})")
+        
+        self.logger.info(
+            "Blockchain manager initialized",
+            api_count=len(self.apis),
+            apis=" → ".join(api_status)
+        )
     
     async def close(self):
         """Close HTTP session"""
@@ -295,29 +318,40 @@ class BlockchainManager:
     
     async def get_address_info(self, address: str) -> Optional[AddressInfo]:
         """Get address info with automatic fallback"""
-        for api in self.apis:
+        for i, api in enumerate(self.apis):
+            api_name = api.__class__.__name__
             try:
-                return await api.get_address_info(address)
+                self.logger.debug(f"Attempting to fetch address info using {api_name}")
+                result = await api.get_address_info(address)
+                if i > 0:
+                    self.logger.info(f"Successfully fetched using fallback API: {api_name}")
+                return result
             except BlockchainAPIError as e:
                 self.logger.warning(
-                    "API failed, trying next",
-                    api=api.__class__.__name__,
-                    error=str(e)
+                    f"API failed ({i+1}/{len(self.apis)}), trying next",
+                    api=api_name,
+                    error=str(e),
+                    address=address[:10] + "..."
                 )
                 continue
         
-        self.logger.error("All APIs failed for address", address=address)
+        self.logger.error("All APIs failed for address", address=address[:10] + "...")
         return None
     
     async def get_addresses_batch(self, addresses: List[str]) -> List[AddressInfo]:
         """Get batch address info with automatic fallback"""
-        for api in self.apis:
+        for i, api in enumerate(self.apis):
+            api_name = api.__class__.__name__
             try:
-                return await api.get_addresses_batch(addresses)
+                self.logger.debug(f"Attempting batch fetch using {api_name}", batch_size=len(addresses))
+                result = await api.get_addresses_batch(addresses)
+                if i > 0:
+                    self.logger.info(f"Successfully fetched batch using fallback API: {api_name}", count=len(result))
+                return result
             except BlockchainAPIError as e:
                 self.logger.warning(
-                    "API failed for batch, trying next",
-                    api=api.__class__.__name__,
+                    f"API failed for batch ({i+1}/{len(self.apis)}), trying next",
+                    api=api_name,
                     error=str(e),
                     batch_size=len(addresses)
                 )

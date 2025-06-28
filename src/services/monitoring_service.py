@@ -206,7 +206,8 @@ class MonitoringService:
                     block_time=datetime.utcnow(),
                     amount=abs(change_amount),
                     tx_type="out" if change_amount < 0 else "in",
-                    is_anomalous=self._is_anomalous_transaction(wallet, change_amount)
+                    is_anomalous=self._is_anomalous_transaction(wallet, change_amount),
+                    extra_data={}
                 )
                 session.add(transaction)
                 

@@ -83,12 +83,6 @@ If hitting rate limits, reduce batch size in .env:
 BATCH_SIZE=10
 ```
 
-### Discord Webhook Failures
-Test the webhook manually:
-```bash
-./test_webhook.sh
-```
-
 ## Next Steps
 
 1. **Get API Keys** (optional but recommended):

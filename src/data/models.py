@@ -16,7 +16,7 @@ class Wallet(Base):
     """Tracked Bitcoin wallet"""
     __tablename__ = 'wallets'
     
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     address = Column(String(62), unique=True, nullable=False, index=True)
     wallet_type = Column(String(20), nullable=False)  # P2PK, P2PKH, etc.
     vulnerability_type = Column(String(20))  # P2PK, REUSED_P2PKH
@@ -57,7 +57,7 @@ class Transaction(Base):
     """Monitored transactions"""
     __tablename__ = 'transactions'
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     txhash = Column(String(64), nullable=False, index=True)
     block_time = Column(DateTime(timezone=True), nullable=False, index=True)
     block_height = Column(Integer)
@@ -93,7 +93,7 @@ class Alert(Base):
     """System alerts and notifications"""
     __tablename__ = 'alerts'
     
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     alert_type = Column(String(50), nullable=False)  # quantum_emergency, dormant_movement, etc.
     severity = Column(String(20), nullable=False)  # LOW, MEDIUM, HIGH, CRITICAL
     
@@ -133,7 +133,7 @@ class WalletSnapshot(Base):
     """Periodic wallet state snapshots for analysis"""
     __tablename__ = 'wallet_snapshots'
     
-    id = Column(BigInteger, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     wallet_address = Column(String(62), nullable=False, index=True)
     snapshot_time = Column(DateTime(timezone=True), nullable=False, index=True)
     
@@ -160,7 +160,7 @@ class SystemMetric(Base):
     """System performance and monitoring metrics"""
     __tablename__ = 'system_metrics'
     
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     metric_name = Column(String(100), nullable=False)
     metric_value = Column(Float, nullable=False)
     metric_type = Column(String(50))  # counter, gauge, histogram

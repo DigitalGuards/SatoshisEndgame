@@ -202,11 +202,12 @@ class DiscordNotificationService:
             # Send webhook
             response = await webhook.execute()
             
-            if response.status_code == 204:
+            if response.status_code in [200, 204]:
                 self.logger.info(
                     "Discord alert sent successfully",
                     alert_type=alert.alert_type,
-                    severity=alert.severity
+                    severity=alert.severity,
+                    status_code=response.status_code
                 )
                 return True
             else:
